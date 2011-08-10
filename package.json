@@ -1,0 +1,5 @@
+{
+    "name": "armstrong.apps.crm",
+    "version": "0.1.0.alpha.0",
+    "description": "Mechanism for hooking up a CRM to Armstrong"
+}
