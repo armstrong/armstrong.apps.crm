@@ -169,7 +169,17 @@ class GroupBackendTestCase(TestCase):
             group_backend.deleted({})
 
 
+class RandomBackendForTesting(object):
+    pass
+
+
 class get_backendTestCase(TestCase):
     def test_returns_Backend_by_default(self):
         b = base.get_backend()
         self.assertIsA(b, base.Backend)
+
+    def test_pays_attention_to_settings(self):
+        with self.settings(ARMSTRONG_CRM_BACKEND="%s.RandomBackendForTesting" %
+                __name__):
+            b = base.get_backend()
+            self.assertIsA(b, RandomBackendForTesting)

@@ -1,3 +1,6 @@
+from armstrong.utils.backends import GenericBackend as ArmstrongGenericBackend
+
+
 class NoopBackend(object):
     def __init__(self, backend):
         self.backend = backend
@@ -58,5 +61,7 @@ class Backend(object):
         return self._group
 
 
-def get_backend():
-    return Backend()
+backend = ArmstrongGenericBackend("ARMSTRONG_CRM_BACKEND",
+        defaults="%s.Backend" % __name__)
+
+get_backend = backend.get_backend
