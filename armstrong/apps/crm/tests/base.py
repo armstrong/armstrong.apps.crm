@@ -167,3 +167,9 @@ class GroupBackendTestCase(TestCase):
         with self.assertRaises(NotImplementedError):
             group_backend = self.generate_random_group_backend()
             group_backend.deleted({})
+
+
+class get_backendTestCase(TestCase):
+    def test_returns_Backend_by_default(self):
+        b = base.get_backend()
+        self.assertIsA(b, base.Backend)

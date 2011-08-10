@@ -56,3 +56,7 @@ class Backend(object):
         if not self._group:
             self._group = self.get_group()
         return self._group
+
+
+def get_backend():
+    return Backend()
