@@ -56,20 +56,15 @@ backend = ArmstrongGenericBackend("ARMSTRONG_CRM_BACKEND",
 get_backend = backend.get_backend
 
 
-def dispatch_user_change(sender, **kwargs):
+def dispatch_post_save_signal(sender, **kwargs):
     created = kwargs.pop("created", False)
-    backend = get_backend()
-    getattr(backend.user, "created" if created else "updated")(kwargs)
+    backend = getattr(get_backend(), sender._meta.module_name)
+    getattr(backend, "created" if created else "updated")(kwargs)
 
-
-def dispatch_group_change(sender, **kwargs):
-    created = kwargs.pop("created", False)
-    backend = get_backend()
-    getattr(backend.group, "created" if created else "updated")(kwargs)
 
 def activate():
     from django.db.models.signals import post_save
     from django.contrib.auth.models import Group
     from django.contrib.auth.models import User
-    post_save.connect(dispatch_user_change, sender=User)
-    post_save.connect(dispatch_group_change, sender=Group)
+    post_save.connect(dispatch_post_save_signal, sender=User)
+    post_save.connect(dispatch_post_save_signal, sender=Group)
