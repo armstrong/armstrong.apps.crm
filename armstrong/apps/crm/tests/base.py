@@ -185,37 +185,37 @@ class get_backendTestCase(TestCase):
 
 class ReceivingSignalsTestCase(TestCase):
     def setUp(self):
+        super(ReceivingSignalsTestCase, self).setUp()
         base.activate()
         fudge.clear_calls()
         fudge.clear_expectations()
+        self.factory = RequestFactory()
 
     def tearDown(self):
+        super(ReceivingSignalsTestCase, self).tearDown()
         fudge.verify()
 
-    def expected_payload(self, expected=None, not_expected=None,
-            instance_class=None):
+    def expected_payload(self, expected=None, not_expected=None):
         def test(payload):
-            for key in expected:
+            for key, instance in expected.items():
                 self.assertTrue(key in payload)
+                if instance:
+                    self.assertIsA(payload[key], instance)
             if not_expected:
                 for key in not_expected:
                     self.assertFalse(key in payload)
-            if instance_class:
-                self.assertIsA(payload["instance"], instance_class)
             return True
         return arg.passes_test(test)
 
     def expected_user_payload(self):
         return self.expected_payload(
-            expected=["instance", "signal", "using", ],
-            not_expected=["created", ],
-            instance_class=User)
+            expected={"instance": User, "signal": None, "using": None, },
+            not_expected=["created", ])
 
     def expected_group_payload(self):
         return self.expected_payload(
-            expected=["instance", "signal", "using", ],
-            not_expected=["created", ],
-            instance_class=Group)
+            expected={"instance": Group, "signal": None, "using": None, },
+            not_expected=["created", ])
 
     def test_dispatches_user_create(self):
         fake_create = fudge.Fake()
