@@ -2,9 +2,19 @@ from contextlib import contextmanager
 import datetime
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.test.client import RequestFactory
 import fudge
 from fudge.inspector import arg
+import unittest
 from ._utils import TestCase
+
+try:
+    from registration.backends import default as registration
+    from registration.signals import user_activated
+    from registration.signals import user_registered
+    from registration.models import RegistrationProfile
+except ImportError:
+    user_activated, user_registered = False, False
 
 from .. import base
 
@@ -264,3 +274,36 @@ class ReceivingSignalsTestCase(TestCase):
         with fudge.patched_context(base.GroupBackend, "deleted", fake_deleted):
             g = Group.objects.create(name="foobar")
             g.delete()
+
+
+    def expected_registration_payload(self):
+        return self.expected_payload(expected={
+                "user": User,
+                "signal": None,
+                "request": None,
+        })
+
+    @unittest.skipIf(user_activated is False,
+            "django-registration is not installed")
+    def test_activate_signal_if_available(self):
+        activated = fudge.Fake()
+        activated.is_callable().expects_call().with_args(
+                self.expected_registration_payload())
+        r = registration.DefaultBackend()
+        request = self.factory.get("/activate")
+        with fudge.patched_context(base.UserBackend, "activated", activated):
+            u = User.objects.create(username="bob")
+            a = RegistrationProfile.objects.create_profile(u)
+            r.activate(request, a.activation_key)
+
+    @unittest.skipIf(user_registered is False,
+            "django-registration is not installed")
+    def test_register_signal_if_available(self):
+        registered = fudge.Fake()
+        registered.is_callable().expects_call().with_args(
+                self.expected_registration_payload())
+        r = registration.DefaultBackend()
+        request = self.factory.get("/register")
+        with fudge.patched_context(base.UserBackend, "registered", registered):
+            r.register(request, username="bob", email="bob@example.com",
+                    password1="foobar")

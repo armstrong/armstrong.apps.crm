@@ -16,7 +16,11 @@ class GenericBackend(object):
 
 
 class UserBackend(GenericBackend):
-    pass
+    def activated(self, payload):
+        pass
+
+    def registered(self, payload):
+        pass
 
 
 class GroupBackend(GenericBackend):
@@ -66,6 +70,14 @@ def dispatch_delete_signal(sender, **kwargs):
     getattr(get_backend(), sender._meta.module_name).deleted(kwargs)
 
 
+def dispatch_user_activated(sender, **kwargs):
+    get_backend().user.activated(kwargs)
+
+
+def dispatch_user_registered(sender, **kwargs):
+    get_backend().user.registered(kwargs)
+
+
 def activate():
     from django.db.models.signals import post_delete
     from django.db.models.signals import post_save
@@ -76,3 +88,11 @@ def activate():
 
     post_delete.connect(dispatch_delete_signal, sender=User)
     post_delete.connect(dispatch_delete_signal, sender=Group)
+
+    try:
+        from registration.signals import user_activated
+        from registration.signals import user_registered
+        user_activated.connect(dispatch_user_activated)
+        user_registered.connect(dispatch_user_registered)
+    except ImportError:
+        pass
