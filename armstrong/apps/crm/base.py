@@ -61,10 +61,16 @@ def dispatch_post_save_signal(sender, **kwargs):
     backend = getattr(get_backend(), sender._meta.module_name)
     getattr(backend, "created" if created else "updated")(kwargs)
 
+def dispatch_delete_signal(sender, **kwargs):
+    get_backend().user.deleted(kwargs)
+
 
 def activate():
+    from django.db.models.signals import post_delete
     from django.db.models.signals import post_save
     from django.contrib.auth.models import Group
     from django.contrib.auth.models import User
     post_save.connect(dispatch_post_save_signal, sender=User)
     post_save.connect(dispatch_post_save_signal, sender=Group)
+
+    post_delete.connect(dispatch_delete_signal, sender=User)

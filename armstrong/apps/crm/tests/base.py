@@ -233,6 +233,14 @@ class ReceivingSignalsTestCase(TestCase):
             u.username = "foobar-modified"
             u.save()
 
+    def test_dispatch_user_delete(self):
+        fake_deleted = fudge.Fake()
+        fake_deleted.is_callable().expects_call().with_args(
+                self.expected_user_payload())
+        with fudge.patched_context(base.UserBackend, "deleted", fake_deleted):
+            u = User.objects.create(username="foobar")
+            u.delete()
+
     def test_dispatches_group_create(self):
         fake_create = fudge.Fake()
         fake_create.is_callable().expects_call().with_args(
