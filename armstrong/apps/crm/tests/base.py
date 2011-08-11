@@ -256,3 +256,11 @@ class ReceivingSignalsTestCase(TestCase):
             g = Group.objects.create(name="foobar")
             g.groupname = "foobar-modified"
             g.save()
+
+    def test_dispatch_group_delete(self):
+        fake_deleted = fudge.Fake()
+        fake_deleted.is_callable().expects_call().with_args(
+                self.expected_group_payload())
+        with fudge.patched_context(base.GroupBackend, "deleted", fake_deleted):
+            g = Group.objects.create(name="foobar")
+            g.delete()

@@ -61,8 +61,9 @@ def dispatch_post_save_signal(sender, **kwargs):
     backend = getattr(get_backend(), sender._meta.module_name)
     getattr(backend, "created" if created else "updated")(kwargs)
 
+
 def dispatch_delete_signal(sender, **kwargs):
-    get_backend().user.deleted(kwargs)
+    getattr(get_backend(), sender._meta.module_name).deleted(kwargs)
 
 
 def activate():
@@ -74,3 +75,4 @@ def activate():
     post_save.connect(dispatch_post_save_signal, sender=Group)
 
     post_delete.connect(dispatch_delete_signal, sender=User)
+    post_delete.connect(dispatch_delete_signal, sender=Group)
