@@ -1,5 +1,9 @@
 from contextlib import contextmanager
+import datetime
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
 import fudge
+from fudge.inspector import arg
 from ._utils import TestCase
 
 from .. import base
@@ -127,20 +131,17 @@ class UserBackendTestCase(TestCase):
         user_backend = base.UserBackend(random_object)
         self.assertEqual(user_backend.backend, random_object)
 
-    def test_created_raises_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            user_backend = self.generate_random_user_backend()
-            user_backend.created({})
+    def test_created_returns_none(self):
+        user_backend = self.generate_random_user_backend()
+        self.assertNone(user_backend.created({}))
 
-    def test_updated_raises_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            user_backend = self.generate_random_user_backend()
-            user_backend.updated({})
+    def test_updated_raises_none(self):
+        user_backend = self.generate_random_user_backend()
+        self.assertNone(user_backend.updated({}))
 
-    def test_deleted_raises_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            user_backend = self.generate_random_user_backend()
-            user_backend.deleted({})
+    def test_deleted_raises_none(self):
+        user_backend = self.generate_random_user_backend()
+        self.assertNone(user_backend.deleted({}))
 
 
 class GroupBackendTestCase(TestCase):
@@ -153,20 +154,17 @@ class GroupBackendTestCase(TestCase):
         group_backend = base.GroupBackend(random_object)
         self.assertEqual(group_backend.backend, random_object)
 
-    def test_created_raises_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            group_backend = self.generate_random_group_backend()
-            group_backend.created({})
+    def test_updated_raises_none(self):
+        group_backend = self.generate_random_group_backend()
+        self.assertNone(group_backend.updated({}))
 
-    def test_updated_raises_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            group_backend = self.generate_random_group_backend()
-            group_backend.updated({})
+    def test_updated_raises_none(self):
+        group_backend = self.generate_random_group_backend()
+        self.assertNone(group_backend.updated({}))
 
-    def test_deleted_raises_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            group_backend = self.generate_random_group_backend()
-            group_backend.deleted({})
+    def test_deleted_raises_none(self):
+        group_backend = self.generate_random_group_backend()
+        self.assertNone(group_backend.deleted({}))
 
 
 class RandomBackendForTesting(object):
@@ -183,3 +181,70 @@ class get_backendTestCase(TestCase):
                 __name__):
             b = base.get_backend()
             self.assertIsA(b, RandomBackendForTesting)
+
+
+class ReceivingSignalsTestCase(TestCase):
+    def setUp(self):
+        base.activate()
+        fudge.clear_calls()
+        fudge.clear_expectations()
+
+    def tearDown(self):
+        fudge.verify()
+
+    def expected_payload(self, expected=None, not_expected=None,
+            instance_class=None):
+        def test(payload):
+            for key in expected:
+                self.assertTrue(key in payload)
+            if not_expected:
+                for key in not_expected:
+                    self.assertFalse(key in payload)
+            if instance_class:
+                self.assertIsA(payload["instance"], instance_class)
+            return True
+        return arg.passes_test(test)
+
+    def expected_user_payload(self):
+        return self.expected_payload(
+            expected=["instance", "signal", "using", ],
+            not_expected=["created", ],
+            instance_class=User)
+
+    def expected_group_payload(self):
+        return self.expected_payload(
+            expected=["instance", "signal", "using", ],
+            not_expected=["created", ],
+            instance_class=Group)
+
+    def test_dispatches_user_create(self):
+        fake_create = fudge.Fake()
+        fake_create.is_callable().expects_call().with_args(
+                self.expected_user_payload())
+        with fudge.patched_context(base.UserBackend, "created", fake_create):
+            User.objects.create(username="foobar")
+
+    def test_dispatches_user_update(self):
+        fake_update = fudge.Fake()
+        fake_update.is_callable().expects_call().with_args(
+                self.expected_user_payload())
+        with fudge.patched_context(base.UserBackend, "updated", fake_update):
+            u = User.objects.create(username="foobar")
+            u.username = "foobar-modified"
+            u.save()
+
+    def test_dispatches_group_create(self):
+        fake_create = fudge.Fake()
+        fake_create.is_callable().expects_call().with_args(
+                self.expected_group_payload())
+        with fudge.patched_context(base.GroupBackend, "created", fake_create):
+            Group.objects.create(name="foobar")
+
+    def test_dispatches_group_update(self):
+        fake_update = fudge.Fake()
+        fake_update.is_callable().expects_call().with_args(
+                self.expected_group_payload())
+        with fudge.patched_context(base.GroupBackend, "updated", fake_update):
+            g = Group.objects.create(name="foobar")
+            g.groupname = "foobar-modified"
+            g.save()

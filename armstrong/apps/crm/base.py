@@ -1,7 +1,7 @@
 from armstrong.utils.backends import GenericBackend as ArmstrongGenericBackend
 
 
-class NoopBackend(object):
+class GenericBackend(object):
     def __init__(self, backend):
         self.backend = backend
 
@@ -13,17 +13,6 @@ class NoopBackend(object):
 
     def deleted(self, payload):
         pass
-
-
-class GenericBackend(NoopBackend):
-    def created(self, payload):
-        raise NotImplementedError()
-
-    def updated(self, payload):
-        raise NotImplementedError()
-
-    def deleted(self, payload):
-        raise NotImplementedError()
 
 
 class UserBackend(GenericBackend):
@@ -65,3 +54,22 @@ backend = ArmstrongGenericBackend("ARMSTRONG_CRM_BACKEND",
         defaults="%s.Backend" % __name__)
 
 get_backend = backend.get_backend
+
+
+def dispatch_user_change(sender, **kwargs):
+    created = kwargs.pop("created", False)
+    backend = get_backend()
+    getattr(backend.user, "created" if created else "updated")(kwargs)
+
+
+def dispatch_group_change(sender, **kwargs):
+    created = kwargs.pop("created", False)
+    backend = get_backend()
+    getattr(backend.group, "created" if created else "updated")(kwargs)
+
+def activate():
+    from django.db.models.signals import post_save
+    from django.contrib.auth.models import Group
+    from django.contrib.auth.models import User
+    post_save.connect(dispatch_user_change, sender=User)
+    post_save.connect(dispatch_group_change, sender=Group)
