@@ -1,10 +1,12 @@
-from armstrong.utils.backends import GenericBackend as ArmstrongGenericBackend
+from armstrong.utils.backends import GenericBackend
 
 
-class GenericBackend(object):
+class BaseBackend(object):
     def __init__(self, backend):
         self.backend = backend
 
+
+class UserBackend(BaseBackend):
     def created(self, payload):
         pass
 
@@ -14,8 +16,6 @@ class GenericBackend(object):
     def deleted(self, payload):
         pass
 
-
-class UserBackend(GenericBackend):
     def activated(self, payload):
         pass
 
@@ -23,8 +23,15 @@ class UserBackend(GenericBackend):
         pass
 
 
-class GroupBackend(GenericBackend):
-    pass
+class GroupBackend(BaseBackend):
+    def created(self, payload):
+        pass
+
+    def updated(self, payload):
+        pass
+
+    def deleted(self, payload):
+        pass
 
 
 class Backend(object):
@@ -54,7 +61,7 @@ class Backend(object):
         return self._group
 
 
-backend = ArmstrongGenericBackend("ARMSTRONG_CRM_BACKEND",
+backend = GenericBackend("ARMSTRONG_CRM_BACKEND",
         defaults="%s.Backend" % __name__)
 
 get_backend = backend.get_backend
