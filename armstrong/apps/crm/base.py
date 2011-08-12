@@ -7,30 +7,30 @@ class BaseBackend(object):
 
 
 class UserBackend(BaseBackend):
-    def created(self, payload):
+    def created(self, user, payload):
         pass
 
-    def updated(self, payload):
+    def updated(self, user, payload):
         pass
 
-    def deleted(self, payload):
+    def deleted(self, user, payload):
         pass
 
-    def activated(self, payload):
+    def activated(self, user, payload):
         pass
 
-    def registered(self, payload):
+    def registered(self, user, payload):
         pass
 
 
 class GroupBackend(BaseBackend):
-    def created(self, payload):
+    def created(self, group, payload):
         pass
 
-    def updated(self, payload):
+    def updated(self, group, payload):
         pass
 
-    def deleted(self, payload):
+    def deleted(self, group, payload):
         pass
 
 
@@ -69,20 +69,24 @@ get_backend = backend.get_backend
 
 def dispatch_post_save_signal(sender, **kwargs):
     created = kwargs.pop("created", False)
+    model = kwargs["instance"]
     backend = getattr(get_backend(), sender._meta.module_name)
-    getattr(backend, "created" if created else "updated")(kwargs)
+    getattr(backend, "created" if created else "updated")(model, kwargs)
 
 
 def dispatch_delete_signal(sender, **kwargs):
-    getattr(get_backend(), sender._meta.module_name).deleted(kwargs)
+    model = kwargs["instance"]
+    getattr(get_backend(), sender._meta.module_name).deleted(model, kwargs)
 
 
 def dispatch_user_activated(sender, **kwargs):
-    get_backend().user.activated(kwargs)
+    user = kwargs["user"]
+    get_backend().user.activated(user, kwargs)
 
 
 def dispatch_user_registered(sender, **kwargs):
-    get_backend().user.registered(kwargs)
+    user = kwargs["user"]
+    get_backend().user.registered(user, kwargs)
 
 
 def activate():

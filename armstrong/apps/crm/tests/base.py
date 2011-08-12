@@ -131,27 +131,45 @@ class BackendTestCase(TestCase):
                 msg="sanity check to make sure subclasses don't bleed through")
 
 
+def with_user_backend_and_user(func):
+    def inner(self):
+        user_backend = self.generate_random_user_backend()
+        user = self.generate_random_user()
+        return func(self, user_backend, user)
+    return inner
+
+
 class UserBackendTestCase(TestCase):
     def generate_random_user_backend(self):
         r = object()
         return base.UserBackend(r)
+
+    def generate_random_user(self):
+        return User.objects.create(username="some_random_user")
 
     def test_sets_backend_to_provided_value(self):
         random_object = object()
         user_backend = base.UserBackend(random_object)
         self.assertEqual(user_backend.backend, random_object)
 
-    def test_created_returns_none(self):
-        user_backend = self.generate_random_user_backend()
-        self.assertNone(user_backend.created({}))
+    @with_user_backend_and_user
+    def test_created_returns_none(self, user_backend, user):
+        self.assertNone(user_backend.created(user, {}))
 
-    def test_updated_raises_none(self):
-        user_backend = self.generate_random_user_backend()
-        self.assertNone(user_backend.updated({}))
+    @with_user_backend_and_user
+    def test_updated_raises_none(self, user_backend, user):
+        self.assertNone(user_backend.updated(user, {}))
 
-    def test_deleted_raises_none(self):
-        user_backend = self.generate_random_user_backend()
-        self.assertNone(user_backend.deleted({}))
+    @with_user_backend_and_user
+    def test_deleted_raises_none(self, user_backend, user):
+        self.assertNone(user_backend.deleted(user, {}))
+
+
+def with_group_backend_and_group(func):
+    def inner(self):
+        return func(self, self.generate_random_group_backend(),
+                self.generate_random_group())
+    return inner
 
 
 class GroupBackendTestCase(TestCase):
@@ -159,22 +177,25 @@ class GroupBackendTestCase(TestCase):
         r = object()
         return base.GroupBackend(r)
 
+    def generate_random_group(self):
+        return Group.objects.create(name="foobar")
+
     def test_sets_backend_to_provided_value(self):
         random_object = object()
         group_backend = base.GroupBackend(random_object)
         self.assertEqual(group_backend.backend, random_object)
 
-    def test_updated_raises_none(self):
-        group_backend = self.generate_random_group_backend()
-        self.assertNone(group_backend.updated({}))
+    @with_group_backend_and_group
+    def test_updated_raises_none(self, group_backend, group):
+        self.assertNone(group_backend.updated(group, {}))
 
-    def test_updated_raises_none(self):
-        group_backend = self.generate_random_group_backend()
-        self.assertNone(group_backend.updated({}))
+    @with_group_backend_and_group
+    def test_updated_raises_none(self, group_backend, group):
+        self.assertNone(group_backend.updated(group, {}))
 
-    def test_deleted_raises_none(self):
-        group_backend = self.generate_random_group_backend()
-        self.assertNone(group_backend.deleted({}))
+    @with_group_backend_and_group
+    def test_deleted_raises_none(self, group_backend, group):
+        self.assertNone(group_backend.deleted(group, {}))
 
 
 class RandomBackendForTesting(object):
@@ -227,9 +248,22 @@ class ReceivingSignalsTestCase(TestCase):
             expected={"instance": Group, "signal": None, "using": None, },
             not_expected=["created", ])
 
+    def expected_model(self, expected):
+        def test(actual):
+            self.assertIsA(actual, expected)
+            return True
+        return arg.passes_test(test)
+
+    def expected_user_model(self):
+        return self.expected_model(User)
+
+    def expected_group_model(self):
+        return self.expected_model(Group)
+
     def test_dispatches_user_create(self):
         fake_create = fudge.Fake()
         fake_create.is_callable().expects_call().with_args(
+                self.expected_user_model(),
                 self.expected_user_payload())
         with fudge.patched_context(base.UserBackend, "created", fake_create):
             User.objects.create(username="foobar")
@@ -237,6 +271,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_dispatches_user_update(self):
         fake_update = fudge.Fake()
         fake_update.is_callable().expects_call().with_args(
+                self.expected_user_model(),
                 self.expected_user_payload())
         with fudge.patched_context(base.UserBackend, "updated", fake_update):
             u = User.objects.create(username="foobar")
@@ -246,6 +281,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_dispatch_user_delete(self):
         fake_deleted = fudge.Fake()
         fake_deleted.is_callable().expects_call().with_args(
+                self.expected_user_model(),
                 self.expected_user_payload())
         with fudge.patched_context(base.UserBackend, "deleted", fake_deleted):
             u = User.objects.create(username="foobar")
@@ -254,6 +290,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_dispatches_group_create(self):
         fake_create = fudge.Fake()
         fake_create.is_callable().expects_call().with_args(
+                self.expected_group_model(),
                 self.expected_group_payload())
         with fudge.patched_context(base.GroupBackend, "created", fake_create):
             Group.objects.create(name="foobar")
@@ -261,6 +298,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_dispatches_group_update(self):
         fake_update = fudge.Fake()
         fake_update.is_callable().expects_call().with_args(
+                self.expected_group_model(),
                 self.expected_group_payload())
         with fudge.patched_context(base.GroupBackend, "updated", fake_update):
             g = Group.objects.create(name="foobar")
@@ -270,6 +308,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_dispatch_group_delete(self):
         fake_deleted = fudge.Fake()
         fake_deleted.is_callable().expects_call().with_args(
+                self.expected_group_model(),
                 self.expected_group_payload())
         with fudge.patched_context(base.GroupBackend, "deleted", fake_deleted):
             g = Group.objects.create(name="foobar")
@@ -288,6 +327,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_activate_signal_if_available(self):
         activated = fudge.Fake()
         activated.is_callable().expects_call().with_args(
+                self.expected_user_model(),
                 self.expected_registration_payload())
         r = registration.DefaultBackend()
         request = self.factory.get("/activate")
@@ -301,6 +341,7 @@ class ReceivingSignalsTestCase(TestCase):
     def test_register_signal_if_available(self):
         registered = fudge.Fake()
         registered.is_callable().expects_call().with_args(
+                self.expected_user_model(),
                 self.expected_registration_payload())
         r = registration.DefaultBackend()
         request = self.factory.get("/register")
