@@ -150,6 +150,19 @@ Just like the ``AwesomeCrmUserBackend``, you need to modify each of the methods
 so they talk to your CRM of choice.
 
 
+Configuring
+-----------
+You must configure the backend you want to use with ``armstrong.apps.crm``.
+You can do this with the ``ARMSTRONG_CRM_BACKEND`` setting.  For example, let's
+take our ``AwesomeCrmBackend`` and configure it (assuming it's in a module
+called ``mysite.crm``).
+
+    ARMSTRONG_CRM_BACKEND = "mysite.crm.Backend"
+
+That's it.  All of signals are wired up.  Whenever an event happens that your
+CRM code needs to know about, it will be invoked.
+
+
 Installation
 ------------
 
