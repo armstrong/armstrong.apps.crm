@@ -54,29 +54,29 @@ this for each backend that you implement.
         Backend for handling user events and sending them to the CRM.
 
         Each method receives a ``user`` representing the ``User`` model
-        that the action was performed on.  It also receives a ``payload``
+        that the action was performed on.  It also receives a ``**payload``
         parameter that is the ``**kwargs`` received by the signal.
         """
 
-        def created(self, user, payload):
+        def created(self, user, **payload):
             """
             Called when a new user is created
             """
             pass
 
-        def updated(self, user, payload):
+        def updated(self, user, **payload):
             """
             Called when a user is updated
             """
             pass
 
-        def deleted(self, user, payload):
+        def deleted(self, user, **payload):
             """
             Called when a user is deleted
             """
             pass
 
-        def activated(self, user, payload):
+        def activated(self, user, **payload):
             """
             Called when a new user activates their account
 
@@ -84,7 +84,7 @@ this for each backend that you implement.
             """
             pass
 
-        def registered(self, user, payload):
+        def registered(self, user, **payload):
             """
             Called when a new user registers for an account
 
@@ -93,8 +93,8 @@ this for each backend that you implement.
             pass
 
 
-Each method receives a ``user`` and a ``payload``  The ``user`` represents the
-User model that the action was performed on.  The ``payload`` is all of the
+Each method receives a ``user`` and a ``**payload``  The ``user`` represents the
+User model that the action was performed on.  The ``**payload`` is all of the
 values sent by the signal this listened to.  Generally, you will only need to
 interact with the ``user``, but you have have the option of using the other
 values provided by the signal.
@@ -124,23 +124,23 @@ Now we need to add a ``AwesomeCrmGroupBackend`` class to handle updates to
         Backend for handling group events and sending them to the CRM.
 
         Each method receives a ``group`` representing the ``Group`` model
-        that the action was performed on.  It also receives a ``payload``
+        that the action was performed on.  It also receives a ``**payload``
         parameter that is the ``**kwargs`` received by the signal.
         """
 
-        def created(self, group, payload):
+        def created(self, group, **payload):
             """
             Called when a new group is created
             """
             pass
 
-        def updated(self, group, payload):
+        def updated(self, group, **payload):
             """
             Called when a group is updated
             """
             pass
 
-        def deleted(self, group, payload):
+        def deleted(self, group, **payload):
             """
             Called when a group is deleted
             """

@@ -154,15 +154,15 @@ class UserBackendTestCase(TestCase):
 
     @with_user_backend_and_user
     def test_created_returns_none(self, user_backend, user):
-        self.assertNone(user_backend.created(user, {}))
+        self.assertNone(user_backend.created(user))
 
     @with_user_backend_and_user
-    def test_updated_raises_none(self, user_backend, user):
-        self.assertNone(user_backend.updated(user, {}))
+    def test_updated_returns_none(self, user_backend, user):
+        self.assertNone(user_backend.updated(user))
 
     @with_user_backend_and_user
-    def test_deleted_raises_none(self, user_backend, user):
-        self.assertNone(user_backend.deleted(user, {}))
+    def test_deleted_rreturns_none(self, user_backend, user):
+        self.assertNone(user_backend.deleted(user))
 
 
 def with_group_backend_and_group(func):
@@ -187,15 +187,15 @@ class GroupBackendTestCase(TestCase):
 
     @with_group_backend_and_group
     def test_updated_raises_none(self, group_backend, group):
-        self.assertNone(group_backend.updated(group, {}))
+        self.assertNone(group_backend.updated(group))
 
     @with_group_backend_and_group
     def test_updated_raises_none(self, group_backend, group):
-        self.assertNone(group_backend.updated(group, {}))
+        self.assertNone(group_backend.updated(group))
 
     @with_group_backend_and_group
     def test_deleted_raises_none(self, group_backend, group):
-        self.assertNone(group_backend.deleted(group, {}))
+        self.assertNone(group_backend.deleted(group))
 
 
 class RandomBackendForTesting(object):
@@ -226,27 +226,42 @@ class ReceivingSignalsTestCase(TestCase):
         super(ReceivingSignalsTestCase, self).tearDown()
         fudge.verify()
 
-    def expected_payload(self, expected=None, not_expected=None):
-        def test(payload):
-            for key, instance in expected.items():
-                self.assertTrue(key in payload)
-                if instance:
-                    self.assertIsA(payload[key], instance)
-            if not_expected:
-                for key in not_expected:
-                    self.assertFalse(key in payload)
-            return True
-        return arg.passes_test(test)
+    def expected_payload(self, expected=None):
+        def test_is_a(instance):
+            def test(value):
+                self.assertIsA(value, instance)
+                return True
+            return test
 
-    def expected_user_payload(self):
-        return self.expected_payload(
-            expected={"instance": User, "signal": None, "using": None, },
-            not_expected=["created", ])
+        payload = {}
+        for key, value in expected.items():
+            if value:
+                type_data = type(value).__mro__
+                if len(type_data) is 3 and type_data[-2] is type:
+                    payload[key] = arg.passes_test(test_is_a(value))
+                else:
+                    payload[key] = value
+            else:
+                payload[key] = arg.any()
+        return payload
 
-    def expected_group_payload(self):
-        return self.expected_payload(
-            expected={"instance": Group, "signal": None, "using": None, },
-            not_expected=["created", ])
+    def expected_user_payload(self, is_delete=False, is_create=False):
+        payload = {"instance": User, "signal": None, "using": None,
+                   "created": is_create, }
+        if not is_delete:
+            payload["raw"] = None
+        else:
+            del payload["created"]
+        return self.expected_payload(payload)
+
+    def expected_group_payload(self, is_delete=False, is_create=False):
+        payload = {"instance": Group, "signal": None, "using": None,
+                   "created": is_create, }
+        if not is_delete:
+            payload["raw"] = None
+        else:
+            del payload["created"]
+        return self.expected_payload(payload)
 
     def expected_model(self, expected):
         def test(actual):
@@ -264,7 +279,7 @@ class ReceivingSignalsTestCase(TestCase):
         fake_create = fudge.Fake()
         fake_create.is_callable().expects_call().with_args(
                 self.expected_user_model(),
-                self.expected_user_payload())
+                **self.expected_user_payload(is_create=True))
         with fudge.patched_context(base.UserBackend, "created", fake_create):
             User.objects.create(username="foobar")
 
@@ -272,7 +287,7 @@ class ReceivingSignalsTestCase(TestCase):
         fake_update = fudge.Fake()
         fake_update.is_callable().expects_call().with_args(
                 self.expected_user_model(),
-                self.expected_user_payload())
+                **self.expected_user_payload())
         with fudge.patched_context(base.UserBackend, "updated", fake_update):
             u = User.objects.create(username="foobar")
             u.username = "foobar-modified"
@@ -282,7 +297,7 @@ class ReceivingSignalsTestCase(TestCase):
         fake_deleted = fudge.Fake()
         fake_deleted.is_callable().expects_call().with_args(
                 self.expected_user_model(),
-                self.expected_user_payload())
+                **self.expected_user_payload(is_delete=True))
         with fudge.patched_context(base.UserBackend, "deleted", fake_deleted):
             u = User.objects.create(username="foobar")
             u.delete()
@@ -291,7 +306,7 @@ class ReceivingSignalsTestCase(TestCase):
         fake_create = fudge.Fake()
         fake_create.is_callable().expects_call().with_args(
                 self.expected_group_model(),
-                self.expected_group_payload())
+                **self.expected_group_payload(is_create=True))
         with fudge.patched_context(base.GroupBackend, "created", fake_create):
             Group.objects.create(name="foobar")
 
@@ -299,7 +314,7 @@ class ReceivingSignalsTestCase(TestCase):
         fake_update = fudge.Fake()
         fake_update.is_callable().expects_call().with_args(
                 self.expected_group_model(),
-                self.expected_group_payload())
+                **self.expected_group_payload())
         with fudge.patched_context(base.GroupBackend, "updated", fake_update):
             g = Group.objects.create(name="foobar")
             g.groupname = "foobar-modified"
@@ -309,7 +324,7 @@ class ReceivingSignalsTestCase(TestCase):
         fake_deleted = fudge.Fake()
         fake_deleted.is_callable().expects_call().with_args(
                 self.expected_group_model(),
-                self.expected_group_payload())
+                **self.expected_group_payload(is_delete=True))
         with fudge.patched_context(base.GroupBackend, "deleted", fake_deleted):
             g = Group.objects.create(name="foobar")
             g.delete()
@@ -328,7 +343,7 @@ class ReceivingSignalsTestCase(TestCase):
         activated = fudge.Fake()
         activated.is_callable().expects_call().with_args(
                 self.expected_user_model(),
-                self.expected_registration_payload())
+                **self.expected_registration_payload())
         r = registration.DefaultBackend()
         request = self.factory.get("/activate")
         with fudge.patched_context(base.UserBackend, "activated", activated):
@@ -342,7 +357,7 @@ class ReceivingSignalsTestCase(TestCase):
         registered = fudge.Fake()
         registered.is_callable().expects_call().with_args(
                 self.expected_user_model(),
-                self.expected_registration_payload())
+                **self.expected_registration_payload())
         r = registration.DefaultBackend()
         request = self.factory.get("/register")
         with fudge.patched_context(base.UserBackend, "registered", registered):

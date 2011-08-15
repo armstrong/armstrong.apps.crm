@@ -15,25 +15,25 @@ class UserBackend(BaseBackend):
     parameter that is the ``**kwargs`` received by the signal.
     """
 
-    def created(self, user, payload):
+    def created(self, user, **payload):
         """
         Called when a new user is created
         """
         pass
 
-    def updated(self, user, payload):
+    def updated(self, user, **payload):
         """
         Called when a user is updated
         """
         pass
 
-    def deleted(self, user, payload):
+    def deleted(self, user, **payload):
         """
         Called when a user is deleted
         """
         pass
 
-    def activated(self, user, payload):
+    def activated(self, user, **payload):
         """
         Called when a new user activates their account
 
@@ -41,7 +41,7 @@ class UserBackend(BaseBackend):
         """
         pass
 
-    def registered(self, user, payload):
+    def registered(self, user, **payload):
         """
         Called when a new user registers for an account
 
@@ -55,23 +55,23 @@ class GroupBackend(BaseBackend):
     Backend for handling group events and sending them to the CRM.
 
     Each method receives a ``group`` representing the ``Group`` model
-    that the action was performed on.  It also receives a ``payload``
-    parameter that is the ``**kwargs`` received by the signal.
+    that the action was performed on.  It also receives a ``**payload``
+    parameter that is all of the keyword arguments received by the signal.
     """
 
-    def created(self, group, payload):
+    def created(self, group, **payload):
         """
         Called when a new group is created
         """
         pass
 
-    def updated(self, group, payload):
+    def updated(self, group, **payload):
         """
         Called when a group is updated
         """
         pass
 
-    def deleted(self, group, payload):
+    def deleted(self, group, **payload):
         """
         Called when a group is deleted
         """
@@ -112,25 +112,25 @@ get_backend = backend.get_backend
 
 
 def dispatch_post_save_signal(sender, **kwargs):
-    created = kwargs.pop("created", False)
+    created = kwargs.get("created", False)
     model = kwargs["instance"]
     backend = getattr(get_backend(), sender._meta.module_name)
-    getattr(backend, "created" if created else "updated")(model, kwargs)
+    getattr(backend, "created" if created else "updated")(model, **kwargs)
 
 
 def dispatch_delete_signal(sender, **kwargs):
     model = kwargs["instance"]
-    getattr(get_backend(), sender._meta.module_name).deleted(model, kwargs)
+    getattr(get_backend(), sender._meta.module_name).deleted(model, **kwargs)
 
 
 def dispatch_user_activated(sender, **kwargs):
     user = kwargs["user"]
-    get_backend().user.activated(user, kwargs)
+    get_backend().user.activated(user, **kwargs)
 
 
 def dispatch_user_registered(sender, **kwargs):
     user = kwargs["user"]
-    get_backend().user.registered(user, kwargs)
+    get_backend().user.registered(user, **kwargs)
 
 
 def activate():
